@@ -64,7 +64,7 @@ class CallHistoryDecryptor:
         if not (Tablename in self.TableList):
             return [], False
         try:
-            cursor = self.cur.execute('SELECT * FROM %s' % Tablename)
+            cursor = self.cur.execute('SELECT * FROM %s ORDER BY datetime(\'2001-01-01\',\'+\' || ZDATE || \' second\') ASC' % Tablename)
         except sqlite3.DatabaseError:
             return [], False
 
@@ -142,10 +142,10 @@ def main():
 
     d = datetime.datetime.strptime("01-01-2001", "%m-%d-%Y")
 
-    # from tableprint import columnprint
+    from tableprint import columnprint
 
     print('[+] Result')
-    header = ['Time(UTC+0)','Answered','Sent','Type','Phone Number', '']
+    header = ['Time(UTC+0)','Answered','Sent','Type','Phone Number', 'Location', 'Duration', '']
     
     rows = []
     for record in records:
@@ -155,13 +155,22 @@ def main():
 
         ans = record[column.index('ZANSWERED')]
 
-        decrypted = decryptor.decryptcallhistorydb(record[column.index('ZADDRESS')])
-        row = [time_converted, 'Yes' if int(ans) == 1 else 'No', 'Yes' if int(record[column.index('ZORIGINATED')]) == 1 else 'No', 'CellPhone' if int(record[column.index('ZCALLTYPE')]) == 1 else 'FaceTime', str(decrypted), '']
-        # rows.append(row)
-        print(decrypted)
+        decrypted = decryptor.decryptcallhistorydb(record[column.index('ZADDRESS')]).decode('utf-8')
+        row = [
+            time_converted, 
+            'Yes' if int(ans) == 1 else 'No', 
+            'Yes' if int(record[column.index('ZORIGINATED')]) == 1 else 'No', 
+            'CellPhone' if int(record[column.index('ZCALLTYPE')]) == 1 else 'FaceTime', 
+            str(decrypted), 
+            str(record[column.index('ZLOCATION')]),
+            str(round(record[column.index('ZDURATION')] / 60, 1)),
+            ''
+        ]
+        rows.append(row)
+        # print(decrypted)
     
-    mszlist = [-1, -1, -1, -1, -1, -1]
-    # columnprint(header, rows, mszlist)
+    mszlist = [-1, -1, -1, -1, -1, -1, -1, -1]
+    columnprint(header, rows, mszlist)
     # print(rows)
 
 if __name__ == "__main__":
