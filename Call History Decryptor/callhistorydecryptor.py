@@ -57,7 +57,7 @@ class CallHistoryDecryptor:
         except sqlite3.DatabaseError:
             return []
         r = cursor.fetchone()
-        colnames = list(map(lambda x: x[0], cursor.description))
+        colnames = list([x[0] for x in cursor.description])
         return colnames, True
 
     def getrecordsbytable(self, Tablename):
@@ -72,12 +72,13 @@ class CallHistoryDecryptor:
         return colnames, True
 
     def decryptcallhistorydb(self, blob):
+        # print(repr(blob))
         if blob is None:
-            return ""
+            return b""
         iv = blob[0x10:0x20]
         data = blob[0x20:]
         tag = blob[0:0x10]
-        auth_data = ''
+        auth_data = b''
         decrypted = gcm.gcm_decrypt(self.key, iv, data, auth_data, tag)
         return decrypted
 
@@ -86,9 +87,9 @@ class CallHistoryDecryptor:
 
 
 def main():
-    print 'Call History Decryptor for OS X Yosemite (Written by n0fate)'
-    print 'It can decrypt a call-history in OS X.'
-    print 'Continuity in OS X : https://www.apple.com/osx/continuity/'
+    print('Call History Decryptor for OS X Yosemite (Written by n0fate)')
+    print('It can decrypt a call-history in OS X.')
+    print('Continuity in OS X : https://www.apple.com/osx/continuity/')
 
     parser = ArgumentParser()
     parser.add_argument("-k", "--key", dest="keyvalue", help="Decoded key as Call History User Data Key in Keychain")
@@ -100,35 +101,36 @@ def main():
         parser.error('[+] Error : add -k and -f option')
 
     try:
-        key = base64.decodestring(args.keyvalue)
-    except:
-        print '[+] Error : key format is not base64 encoded'
+        key = base64.decodebytes(args.keyvalue.encode('utf-8'))
+    except Exception as e:
+        print(e)
+        print('[+] Error : key format is not base64 encoded')
         return
 
-    print '[+] Key is %s'%key.encode('hex')
+    print('[+] Key is %s'%key.hex())
 
     dbname = args.dbname
-    print '[+] Open the database : %s'%dbname
+    print('[+] Open the database : %s'%dbname)
 
     decryptor = CallHistoryDecryptor()
     decryptor.open(dbname)
     ret = decryptor.open(dbname)
 
     if ret is False:
-        print '[+] Error : Invalid db file'
+        print('[+] Error : Invalid db file')
         return
 
-    print '[+] Get a list of table'
+    print('[+] Get a list of table')
 
     tablelist = decryptor.gettablelist()
     #print tablelist
 
-    print '[+] Get a list of columns in %s table'%tablelist[1]
+    print('[+] Get a list of columns in %s table'%tablelist[1])
     column, ret = decryptor.getcolumnnamebytable(tablelist[1])
 
     #print column
 
-    print '[+] Get a list of records in %s table'%tablelist[1]
+    print('[+] Get a list of records in %s table'%tablelist[1])
     records, ret = decryptor.getrecordsbytable(tablelist[1])
 
     if ret is False:
@@ -140,9 +142,9 @@ def main():
 
     d = datetime.datetime.strptime("01-01-2001", "%m-%d-%Y")
 
-    from tableprint import columnprint
+    # from tableprint import columnprint
 
-    print '[+] Result'
+    print('[+] Result')
     header = ['Time(UTC+0)','Answered','Sent','Type','Phone Number', '']
     
     rows = []
@@ -155,10 +157,12 @@ def main():
 
         decrypted = decryptor.decryptcallhistorydb(record[column.index('ZADDRESS')])
         row = [time_converted, 'Yes' if int(ans) == 1 else 'No', 'Yes' if int(record[column.index('ZORIGINATED')]) == 1 else 'No', 'CellPhone' if int(record[column.index('ZCALLTYPE')]) == 1 else 'FaceTime', str(decrypted), '']
-        rows.append(row)
+        # rows.append(row)
+        print(decrypted)
     
     mszlist = [-1, -1, -1, -1, -1, -1]
-    columnprint(header, rows, mszlist)
+    # columnprint(header, rows, mszlist)
+    # print(rows)
 
 if __name__ == "__main__":
     main()
